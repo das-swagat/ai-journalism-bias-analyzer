@@ -1,42 +1,54 @@
 # AI Journalism Bias Analyzer
 
-A small school-project-grade web demo for analyzing article text and news URLs for:
-- sentiment
+An interactive article-analysis system for examining journalism text through:
+- sentiment analysis
+- bias and context-aware rule detection
+- likely speaker and subject extraction
+- emotion mix estimation
+- structured article summarization
+
+This repository preserves the notebook-based research workflow while providing a reusable Python backend and a lightweight Flask web interface for demonstration and testing.
+
+---
+
+## Overview
+
+The system is designed to analyze either:
+- pasted article text, or
+- a public article URL
+
+It then produces a structured report including:
+- source type and likely outlet/platform
+- sentence-level sentiment labels
 - bias/context flags
-- likely speakers/subjects
-- emotion mix
-- quick summary
+- likely speakers and quoted content
+- estimated emotion intensity and emotion mix
+- article-level interpretation and quick summary
 
-This repo keeps the notebook as the research backbone and provides a small Flask web app for presentation.
+The project combines:
+- sentiment scoring
+- rule-based bias detection
+- context-aware adjustments
+- optional MBIC-informed cue expansion
 
-## Project structure
+---
 
-- `notebooks/` — research notebooks
-- `app/` — Flask backend + HTML frontend
-- `data/` — optional `labeled_dataset.xlsx` for MBIC-informed cue expansion
-- `reports/` — testing notes and observations
+## Repository Structure
 
-## Run locally
-
-```bash
-pip install -r requirements.txt
-python app/app.py
-```
-
-Then open the local address shown in the terminal.
-
-## Optional dataset
-
-If you have the MBIC spreadsheet used earlier in the project, place it here exactly:
-
-```text
-data/labeled_dataset.xlsx
-```
-
-The app will still work without it; it will simply use the built-in cue lists only.
-
-## Notes
-
-- Confidence is a heuristic confidence estimate, not measured accuracy.
-- URL scraping works best on standard public news pages and may miss some sites with dynamic or protected content.
-- This is a project demo, not a production system.
+ai_journalism_bias_analyzer/
+├── app/
+│   ├── app.py
+│   ├── analyzer_core.py
+│   ├── templates/
+│   │   └── index.html
+│   └── static/
+│       ├── styles.css
+│       └── app.js
+├── data/
+│   └── labeled_dataset.xlsx
+├── notebooks/
+│   └── article_bias_analyzer_v4_professional.ipynb
+├── reports/
+│   └── testing_notes.md
+├── requirements.txt
+└── README.md
