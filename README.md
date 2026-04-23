@@ -35,6 +35,7 @@ The project combines:
 
 ## Repository Structure
 
+```text
 ai_journalism_bias_analyzer/
 ├── app/
 │   ├── app.py
