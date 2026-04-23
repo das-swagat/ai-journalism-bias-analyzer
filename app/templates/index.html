@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AI Journalism Bias Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <header class="hero">
+      <h1>AI Journalism Bias Analyzer</h1>
+      <p>A small project demo that analyzes article text or a news URL for sentiment, bias/context cues, likely speakers, and emotion mix.</p>
+    </header>
+
+    <section class="card">
+      <h2>Input</h2>
+      <div class="input-mode">
+        <label><input type="radio" name="mode" value="text" checked> Paste article text</label>
+        <label><input type="radio" name="mode" value="url"> Use article URL</label>
+      </div>
+      <textarea id="articleText" placeholder="Paste article text here..."></textarea>
+      <input id="articleUrl" type="text" placeholder="Paste a news URL here..." />
+      <button id="analyzeBtn">Analyze</button>
+      <div id="status"></div>
+    </section>
+
+    <section id="results" class="hidden">
+      <section class="card" id="summaryCard"></section>
+      <section class="charts-grid">
+        <div class="card"><canvas id="sentimentChart"></canvas></div>
+        <div class="card"><canvas id="biasChart"></canvas></div>
+        <div class="card"><canvas id="emotionChart"></canvas></div>
+      </section>
+      <section class="card">
+        <h3>Likely Speakers / What Was Said</h3>
+        <div id="speakers"></div>
+      </section>
+      <section class="card">
+        <h3>Top Bias-Flagged Sentences</h3>
+        <div id="flagged"></div>
+      </section>
+      <section class="card">
+        <h3>Top Negative Sentences</h3>
+        <div id="negative"></div>
+      </section>
+    </section>
+  </div>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
