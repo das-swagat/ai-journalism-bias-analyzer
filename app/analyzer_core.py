@@ -32,7 +32,6 @@ POSITIVE_CUES = {
     "beneficial", "victory", "support"
 }
 
-# Removed broad "sure" markers because they falsely trigger on normal phrases like "make sure"
 SARCASM_MARKERS = {
     "oh great", "yeah,", "yeah ", "as if", "exactly what we needed",
     "i'm impressed", "i am impressed", "brilliant decision", "fantastic job",
@@ -65,13 +64,14 @@ SOURCE_MAP = {
 }
 
 SPEAKER_PATTERNS = [
-    re.compile(r'\b([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\s+(said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|discussed)\b'),
-    re.compile(r'\b(?:according to|said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted)\s+([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\b')
+    re.compile(r'\b([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\s+(said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|discussed|posted)\b'),
+    re.compile(r'\b(?:according to|said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|posted)\s+([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\b')
 ]
 
 
 def maybe_extend_cues_from_mbic():
     global IMPLICIT_NEGATIVE_CUES, EXPLICIT_NEGATIVE_CUES, POSITIVE_CUES
+
     file = Path(__file__).resolve().parents[1] / "data" / "labeled_dataset.xlsx"
 
     if not file.exists():
@@ -123,11 +123,37 @@ def is_junk_paragraph(p: str):
     p_low = p.lower().strip()
 
     junk_patterns = [
+        "skip to main content",
+        "keyboard shortcuts",
+        "npr logo",
+        "newsletters",
+        "sign in",
+        "npr shop",
+        "donate",
+        "read & listen",
+        "more stories",
+        "more stories from npr",
+        "popular on",
+        "popular on npr",
+        "npr editors",
+        "editor's picks",
+        "connect",
+        "facebook",
+        "instagram",
+        "public editor",
+        "corrections",
+        "transcripts",
+        "contact & help",
+        "about npr",
+        "terms of use",
+        "privacy",
+        "your privacy choices",
+        "text only",
+        "all rights reserved",
         "sign up for",
         "get this delivered",
         "got a confidential news tip",
         "we want to hear from you",
-        "all rights reserved",
         "data is a real-time snapshot",
         "stock quotes",
         "market data",
@@ -144,6 +170,68 @@ def is_junk_paragraph(p: str):
     return any(j in p_low for j in junk_patterns)
 
 
+def cut_after_junk_sections(text: str):
+    cut_markers = [
+        "More Stories From NPR",
+        "Popular on NPR.org",
+        "NPR Editors' Picks",
+        "Read & Listen",
+        "Connect",
+        "Terms of Use",
+        "Privacy",
+        "Your Privacy Choices",
+        "More Stories",
+        "Popular on"
+    ]
+
+    cut_positions = []
+    for marker in cut_markers:
+        idx = text.find(marker)
+        if idx != -1:
+            cut_positions.append(idx)
+
+    if cut_positions:
+        text = text[:min(cut_positions)]
+
+    return text.strip()
+
+
+def clean_article_text(text: str):
+    if not text:
+        return ""
+
+    text = text.replace("\r", "\n")
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    text = cut_after_junk_sections(text)
+
+    lines = []
+    for line in text.splitlines():
+        line = re.sub(r"\s+", " ", line).strip()
+
+        if not line:
+            continue
+
+        if is_junk_paragraph(line):
+            continue
+
+        # remove photo/caption boilerplate and isolated section labels
+        if line.upper() == line and len(line.split()) <= 4:
+            continue
+
+        if line.lower().startswith(("file -", "ap hide caption", "hide caption")):
+            continue
+
+        lines.append(line)
+
+    cleaned = "\n".join(lines).strip()
+
+    # hard cap to avoid footer/recommendation blocks on long pages
+    if len(cleaned) > 12000:
+        cleaned = cleaned[:12000]
+
+    return cleaned
+
+
 def get_article_text_and_meta(article_text: str, article_url: str):
     meta = {
         "title": "",
@@ -154,7 +242,7 @@ def get_article_text_and_meta(article_text: str, article_url: str):
     }
 
     if isinstance(article_text, str) and article_text.strip():
-        return article_text.strip(), meta
+        return clean_article_text(article_text.strip()), meta
 
     if isinstance(article_url, str) and article_url.strip():
         parsed = urllib.parse.urlparse(article_url.strip())
@@ -175,6 +263,9 @@ def get_article_text_and_meta(article_text: str, article_url: str):
 
             soup = BeautifulSoup(response.text, "html.parser")
 
+            for tag in soup(["script", "style", "nav", "footer", "aside", "form"]):
+                tag.decompose()
+
             title_tag = soup.find("title")
             if title_tag:
                 meta["title"] = title_tag.get_text(" ", strip=True)
@@ -189,13 +280,25 @@ def get_article_text_and_meta(article_text: str, article_url: str):
             if not paragraphs:
                 paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
 
-            cleaned = []
+            cleaned_paragraphs = []
+
             for p in paragraphs:
                 p = re.sub(r"\s+", " ", p).strip()
-                if len(p) >= 40 and not is_junk_paragraph(p):
-                    cleaned.append(p)
 
-            article = "\n".join(cleaned).strip()
+                if len(p) < 60:
+                    continue
+
+                if is_junk_paragraph(p):
+                    continue
+
+                if p.lower().startswith(("file -", "ap hide caption", "hide caption")):
+                    continue
+
+                cleaned_paragraphs.append(p)
+
+            article = "\n".join(cleaned_paragraphs).strip()
+            article = clean_article_text(article)
+
             meta["scrape_status"] = "success" if article else "no_text_extracted"
 
             return article, meta
@@ -214,12 +317,16 @@ def split_sentences_clean(text: str):
         "U.S.": "US_PROTECT",
         "U.K.": "UK_PROTECT",
         "J.F.K.": "JFK_PROTECT",
+        "N.J.": "NJ_PROTECT",
+        "R-La.": "RLA_PROTECT",
+        "D-Calif.": "DCALIF_PROTECT",
         "Mr.": "MR_PROTECT",
         "Mrs.": "MRS_PROTECT",
         "Dr.": "DR_PROTECT",
         "Prof.": "PROF_PROTECT",
         "No.": "NO_PROTECT",
-        "St.": "ST_PROTECT"
+        "St.": "ST_PROTECT",
+        "D.C.": "DC_PROTECT"
     }
 
     for k, v in protected.items():
@@ -256,8 +363,17 @@ def split_sentences_clean(text: str):
 
     final = []
     for s in merged:
-        if not s.strip():
+        s = s.strip()
+
+        if not s:
             continue
+
+        if is_junk_paragraph(s):
+            continue
+
+        if s.lower().startswith(("file -", "ap hide caption", "hide caption")):
+            continue
+
         if final and len(s.split()) <= 1:
             final[-1] += " " + s
         else:
@@ -273,7 +389,10 @@ def detect_quote_type(text: str):
 
 
 def extract_speaker(text: str):
-    bad_speakers = {"Tuesday", "Wednesday", "Thursday", "Friday", "Monday", "Saturday", "Sunday", "He", "She", "It", "Among", "Meanwhile"}
+    bad_speakers = {
+        "Tuesday", "Wednesday", "Thursday", "Friday", "Monday", "Saturday", "Sunday",
+        "He", "She", "It", "Among", "Meanwhile"
+    }
 
     for pattern in SPEAKER_PATTERNS:
         match = pattern.search(text)
@@ -288,7 +407,7 @@ def extract_speaker(text: str):
             if parts and parts[0] in {"On", "In", "When", "The"}:
                 return ""
 
-            if any(p in {"Business", "Financial", "News", "Company", "Analysis"} for p in parts):
+            if any(p in {"Business", "Financial", "News", "Company", "Analysis", "Stories", "Culture", "Music", "Podcasts"} for p in parts):
                 return ""
 
             return candidate
@@ -299,9 +418,25 @@ def extract_speaker(text: str):
 def extract_subjects(full_text: str, topn: int = 5):
     matches = re.findall(r'\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}\b', full_text)
 
-    bad_single = {"On", "In", "When", "The", "A", "An", "He", "She", "It", "Meanwhile", "But", "Among", "Even", "Tuesday", "Thursday", "Friday", "Wednesday", "Monday", "Saturday", "Sunday"}
-    bad_starts = {"Why", "What", "How", "That", "This", "These", "Those"}
-    bad_words_anywhere = {"Rights", "Reserved", "Business", "Financial", "Analysis", "Information", "Newsletter", "Company", "Media"}
+    bad_single = {
+        "On", "In", "When", "The", "A", "An", "He", "She", "It", "Meanwhile", "But",
+        "Among", "Even", "Tuesday", "Thursday", "Friday", "Wednesday", "Monday",
+        "Saturday", "Sunday", "News", "Culture", "Music", "Podcasts", "Home"
+    }
+
+    bad_starts = {"Why", "What", "How", "That", "This", "These", "Those", "More", "Popular"}
+    bad_words_anywhere = {
+        "Rights", "Reserved", "Business", "Financial", "Analysis", "Information",
+        "Newsletter", "Company", "Media", "Stories", "Editors", "Picks", "Culture",
+        "Music", "Podcasts", "Minute", "Donate", "Shop", "Privacy", "Terms"
+    }
+
+    allowed_single_entities = {
+        "Russia", "Ukraine", "Kremlin", "Putin", "Remeslo", "Navalny", "Telegram",
+        "Fontanka", "Tass", "Solovyov", "Rubio", "Trump", "Iran", "Israel",
+        "Hezbollah", "Microsoft", "Meta", "Anthropic", "OpenAI", "Amazon", "CNBC",
+        "Reuters", "CNN", "NPR", "EU", "Hungary", "Slovakia", "Belgium"
+    }
 
     counts = {}
 
@@ -317,12 +452,10 @@ def extract_subjects(full_text: str, topn: int = 5):
         if any(p in bad_words_anywhere for p in parts):
             continue
 
-        if len(parts) == 1 and match not in {
-            "Russia", "Ukraine", "Kremlin", "Putin", "Remeslo", "Navalny", "Telegram",
-            "Fontanka", "Tass", "Solovyov", "Rubio", "Trump", "Iran", "Israel",
-            "Hezbollah", "Microsoft", "Meta", "Anthropic", "OpenAI", "Amazon", "CNBC",
-            "Reuters", "CNN", "NPR"
-        }:
+        if any(x in match.lower() for x in ["news", "stories", "culture", "music", "podcasts", "editors", "minute", "business", "analysis"]):
+            continue
+
+        if len(parts) == 1 and match not in allowed_single_entities:
             continue
 
         counts[match] = counts.get(match, 0) + 1
