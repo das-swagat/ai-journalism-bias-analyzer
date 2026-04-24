@@ -193,7 +193,9 @@ function initCursorEffect() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  initCursorEffect();
+  if (window.innerWidth > 850 && window.matchMedia("(pointer: fine)").matches) {
+    initCursorEffect();
+  }
 
   const analyzeBtn = document.getElementById("analyzeBtn");
   const textBox = document.getElementById("articleText");
