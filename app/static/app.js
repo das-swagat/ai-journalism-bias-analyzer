@@ -103,10 +103,29 @@ document.addEventListener("DOMContentLoaded", () => {
     status.textContent = "Analyzing...";
     results.classList.add("hidden");
 
-    const payload =
-      mode === "text"
-        ? { article_text: articleText, article_url: "" }
-        : { article_text: "", article_url: articleUrl };
+    let payload;
+
+    if (mode === "url") {
+      if (!articleUrl.trim()) {
+        status.textContent = "Please paste a URL first.";
+        return;
+      }
+    
+      payload = {
+        article_text: "",
+        article_url: articleUrl.trim()
+      };
+    } else {
+      if (!articleText.trim()) {
+        status.textContent = "Please paste article text first.";
+        return;
+      }
+    
+      payload = {
+        article_text: articleText.trim(),
+        article_url: ""
+      };
+    }
 
     try {
       const response = await fetch("/analyze", {
