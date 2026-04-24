@@ -92,13 +92,41 @@ function drawPieChart(canvasId, title, dataObject) {
 
 document.addEventListener("DOMContentLoaded", () => {
   const analyzeBtn = document.getElementById("analyzeBtn");
+  const textBox = document.getElementById("articleText");
+  const urlBox = document.getElementById("articleUrl");
+  const modeRadios = document.querySelectorAll('input[name="mode"]');
+  const status = document.getElementById("status");
+  const results = document.getElementById("results");
+
+  function updateInputMode() {
+    const mode = document.querySelector('input[name="mode"]:checked').value;
+
+    status.textContent = "";
+    results.classList.add("hidden");
+
+    if (mode === "url") {
+      textBox.style.display = "none";
+      urlBox.style.display = "block";
+      textBox.value = "";
+      urlBox.focus();
+    } else {
+      textBox.style.display = "block";
+      urlBox.style.display = "none";
+      urlBox.value = "";
+      textBox.focus();
+    }
+  }
+
+  modeRadios.forEach((radio) => {
+    radio.addEventListener("change", updateInputMode);
+  });
+
+  updateInputMode();
 
   analyzeBtn.addEventListener("click", async () => {
     const mode = document.querySelector('input[name="mode"]:checked').value;
-    const articleText = document.getElementById("articleText").value;
-    const articleUrl = document.getElementById("articleUrl").value;
-    const status = document.getElementById("status");
-    const results = document.getElementById("results");
+    const articleText = textBox.value;
+    const articleUrl = urlBox.value;
 
     status.textContent = "Analyzing...";
     results.classList.add("hidden");
@@ -110,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
         status.textContent = "Please paste a URL first.";
         return;
       }
-    
+
       payload = {
         article_text: "",
         article_url: articleUrl.trim()
@@ -120,7 +148,7 @@ document.addEventListener("DOMContentLoaded", () => {
         status.textContent = "Please paste article text first.";
         return;
       }
-    
+
       payload = {
         article_text: articleText.trim(),
         article_url: ""
