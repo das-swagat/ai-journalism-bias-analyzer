@@ -242,7 +242,38 @@ def get_article_text_and_meta(article_text: str, article_url: str):
     }
 
     if isinstance(article_text, str) and article_text.strip():
-        return clean_article_text(article_text.strip()), meta
+        cleaned = clean_article_text(article_text.strip())
+        lines = [l.strip() for l in cleaned.splitlines() if l.strip()]
+    
+        skip_title_lines = {
+            "special series",
+            "world",
+            "news",
+            "politics",
+            "business",
+            "culture",
+            "music",
+            "podcasts",
+            "by"
+        }
+    
+        for line in lines[:12]:
+            low = line.lower().strip()
+    
+            if low in skip_title_lines:
+                continue
+    
+            if low.startswith("by "):
+                continue
+    
+            if re.search(r"\b\d{4}\b|\d{1,2}:\d{2}", line):
+                continue
+    
+            if len(line.split()) >= 6:
+                meta["title"] = line[:180]
+                break
+    
+        return cleaned, meta
 
     if isinstance(article_url, str) and article_url.strip():
         parsed = urllib.parse.urlparse(article_url.strip())
