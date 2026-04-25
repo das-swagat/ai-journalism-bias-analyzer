@@ -1,42 +1,60 @@
-# AI Journalism Bias Analyzer
+# The Context Observer  
+### AI-powered journalism analysis
 
-An interactive article-analysis system for examining journalism text through:
-- sentiment analysis
-- bias and context-aware rule detection
-- likely speaker and subject extraction
-- emotion mix estimation
-- structured article summarization
+The Context Observer is an interactive journalism analysis tool that examines article text or public news URLs for sentiment, bias/context cues, likely speakers, subject focus, and estimated emotional tone.
 
-This repository preserves the notebook-based research workflow while providing a reusable Python backend and a lightweight Flask web interface for demonstration and testing.
+Live demo:  
+https://ai-journalism-bias-analyzer.onrender.com
 
 ---
 
-## Overview
+## Use the Web App
 
-The system is designed to analyze either:
-- pasted article text, or
-- a public article URL
+The easiest way to use the tool is through the hosted web version:
 
-It then produces a structured report including:
-- source type and likely outlet/platform
-- sentence-level sentiment labels
-- bias/context flags
-- likely speakers and quoted content
-- estimated emotion intensity and emotion mix
-- article-level interpretation and quick summary
+1. Open the live demo link:  
+   https://ai-journalism-bias-analyzer.onrender.com
 
-The project combines:
-- sentiment scoring
-- rule-based bias detection
-- context-aware adjustments
-- optional MBIC-informed cue expansion
+2. Choose one input option:
+   - **Paste article text**
+   - **Use article URL**
+
+3. Click **Analyze Article**
+
+4. Review the generated report:
+   - overall interpretation
+   - sentiment distribution
+   - bias/context labels
+   - emotion mix
+   - likely speakers
+   - top bias-flagged sentences
+   - top negative sentences
+
+Note: Some news websites may block URL scraping. If URL mode fails, copy and paste the article text instead.
+
+---
+
+## Project Overview
+
+This project combines a notebook-based research workflow with a Flask web application.
+
+The analyzer uses:
+- TextBlob sentiment scoring
+- VADER sentiment scoring
+- rule-based bias/context cue detection
+- MBIC-informed cue expansion
+- sentence-level analysis
+- lightweight speaker and subject extraction
+- visual summaries using charts
+
+The goal is not to claim perfect bias detection, but to provide an explainable prototype for studying how sentiment, framing, context, and bias cues appear in journalism.
 
 ---
 
 ## Repository Structure
 
 ```text
-ai_journalism_bias_analyzer/
+ai-journalism-bias-analyzer/
 ├── app/
 │   ├── app.py
 │   ├── analyzer_core.py
@@ -52,4 +70,6 @@ ai_journalism_bias_analyzer/
 ├── reports/
 │   └── testing_notes.md
 ├── requirements.txt
+├── runtime.txt
+├── render.yaml
 └── README.md
