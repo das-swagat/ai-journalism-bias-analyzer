@@ -40,6 +40,20 @@ function renderSummary(summary, mbicStatus) {
     </div>
     <p><b>Quick Summary:</b> ${valueOrNA(summary.quick_summary)}</p>
     <p><b>MBIC Status:</b> ${valueOrNA(mbicStatus)}</p>
+    
+    <div class="guide-box">
+      <h3>How to read this report</h3>
+      <p>
+        <b>VADER</b> stands for <b>Valence Aware Dictionary and sEntiment Reasoner</b>.
+        It gives a compound sentiment score from <b>-1</b> to <b>+1</b>, where negative
+        values suggest negative tone, positive values suggest positive tone, and values
+        near 0 suggest neutral tone.
+      </p>
+      <p>
+        Bias/context labels are rule-based analysis cues, not final judgments. Severity
+        combines sentiment strength, cue strength, and context-based signals.
+      </p>
+    </div>
   `;
 }
 
