@@ -80,8 +80,14 @@ SOURCE_MAP = {
 }
 
 SPEAKER_PATTERNS = [
-    re.compile(r'\b([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\s+(said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|discussed|posted)\b'),
-    re.compile(r'\b(?:according to|said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|posted)\s+([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\b')
+    re.compile(
+        r'\b([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\s+'
+        r'(said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|discussed|posted)\b'
+    ),
+    re.compile(
+        r'\b(?:according to|said|wrote|added|told|argued|warned|criticized|accused|responded|called|urged|noted|posted)\s+'
+        r'([A-Z][A-Za-z.\-]+(?:\s+[A-Z][A-Za-z.\-]+){0,2})\b'
+    )
 ]
 
 
@@ -110,12 +116,19 @@ def maybe_extend_cues_from_mbic():
                     phrases.append(p)
 
         for p, _ in Counter(phrases).most_common(40):
-            if any(w in p for w in ["not", "without", "concern", "doubt", "critic", "accus", "respond", "unclear", "remain", "failed"]):
+            if any(
+                w in p
+                for w in [
+                    "not", "without", "concern", "doubt", "critic",
+                    "accus", "respond", "unclear", "remain", "failed"
+                ]
+            ):
                 IMPLICIT_NEGATIVE_CUES.add(p)
             else:
                 EXPLICIT_NEGATIVE_CUES.add(p)
 
         return "Loaded MBIC-informed cues from data/labeled_dataset.xlsx."
+
     except Exception as e:
         return f"MBIC file found but could not be used: {e}"
 
@@ -125,6 +138,7 @@ MBIC_STATUS = maybe_extend_cues_from_mbic()
 
 def classify_source(domain: str):
     domain = domain.lower().replace("www.", "")
+
     if not domain:
         return "pasted_text", "Pasted Article Text"
 
@@ -201,6 +215,7 @@ def cut_after_junk_sections(text: str):
     ]
 
     cut_positions = []
+
     for marker in cut_markers:
         idx = text.find(marker)
         if idx != -1:
@@ -284,7 +299,7 @@ def clean_article_text(text: str):
         if is_caption_like(line):
             continue
 
-        # remove photo/caption boilerplate and isolated section labels
+        # Remove photo/caption boilerplate and isolated section labels.
         if line.upper() == line and len(line.split()) <= 4:
             continue
 
@@ -295,7 +310,7 @@ def clean_article_text(text: str):
 
     cleaned = "\n".join(lines).strip()
 
-    # hard cap to avoid footer/recommendation blocks on long pages
+    # Hard cap to avoid footer/recommendation blocks on long pages.
     if len(cleaned) > 12000:
         cleaned = cleaned[:12000]
 
@@ -376,7 +391,9 @@ def get_article_text_and_meta(article_text: str, article_url: str):
 
             if article_blocks:
                 for block in article_blocks:
-                    paragraphs.extend([p.get_text(" ", strip=True) for p in block.find_all("p")])
+                    paragraphs.extend(
+                        [p.get_text(" ", strip=True) for p in block.find_all("p")]
+                    )
 
             if not paragraphs:
                 paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
@@ -424,7 +441,13 @@ def get_article_text_and_meta(article_text: str, article_url: str):
 
 
 def split_sentences_clean(text: str):
-    text = text.replace("\r", "\n").replace("“", '"').replace("”", '"').replace("’", "'").strip()
+    text = (
+        text.replace("\r", "\n")
+        .replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .strip()
+    )
 
     protected = {
         "U.S.": "US_PROTECT",
@@ -452,6 +475,7 @@ def split_sentences_clean(text: str):
     chunks = [c.strip() for c in chunks if c.strip()]
 
     restored = []
+
     for c in chunks:
         for k, v in protected.items():
             c = c.replace(v, k)
@@ -466,7 +490,11 @@ def split_sentences_clean(text: str):
 
         if i + 1 < len(restored):
             tail_word = cur.split()[-1].lower() if cur.split() else ""
-            if len(cur.split()) <= 3 or tail_word in {"the", "a", "an", "of", "to", "on", "in", "with", "and", "including", "saying"}:
+
+            if len(cur.split()) <= 3 or tail_word in {
+                "the", "a", "an", "of", "to", "on", "in", "with",
+                "and", "including", "saying"
+            }:
                 merged.append((cur + " " + restored[i + 1]).strip())
                 i += 2
                 continue
@@ -508,6 +536,7 @@ def split_sentences_clean(text: str):
 def detect_quote_type(text: str):
     if any(q in text for q in ['"', "“", "”", "‘", "’"]):
         return "quote_or_quoted_content"
+
     return "narration"
 
 
@@ -519,6 +548,7 @@ def extract_speaker(text: str):
 
     for pattern in SPEAKER_PATTERNS:
         match = pattern.search(text)
+
         if match:
             candidate = match.group(1).strip()
 
@@ -530,7 +560,13 @@ def extract_speaker(text: str):
             if parts and parts[0] in {"On", "In", "When", "The"}:
                 return ""
 
-            if any(p in {"Business", "Financial", "News", "Company", "Analysis", "Stories", "Culture", "Music", "Podcasts"} for p in parts):
+            if any(
+                p in {
+                    "Business", "Financial", "News", "Company", "Analysis",
+                    "Stories", "Culture", "Music", "Podcasts"
+                }
+                for p in parts
+            ):
                 return ""
 
             return candidate
@@ -548,6 +584,7 @@ def extract_subjects(full_text: str, topn: int = 5):
     }
 
     bad_starts = {"Why", "What", "How", "That", "This", "These", "Those", "More", "Popular"}
+
     bad_words_anywhere = {
         "Rights", "Reserved", "Business", "Financial", "Analysis", "Information",
         "Newsletter", "Company", "Media", "Stories", "Editors", "Picks", "Culture",
@@ -576,7 +613,13 @@ def extract_subjects(full_text: str, topn: int = 5):
         if any(p in bad_words_anywhere for p in parts):
             continue
 
-        if any(x in match.lower() for x in ["news", "stories", "culture", "music", "podcasts", "editors", "minute", "business", "analysis"]):
+        if any(
+            x in match.lower()
+            for x in [
+                "news", "stories", "culture", "music", "podcasts",
+                "editors", "minute", "business", "analysis"
+            ]
+        ):
             continue
 
         if len(parts) == 1 and match not in allowed_single_entities:
@@ -600,8 +643,10 @@ def sentiment_label(tb_polarity: float, vd_compound: float):
 def vader_label(vd_compound: float):
     if vd_compound <= -0.1:
         return "negative"
+
     if vd_compound >= 0.1:
         return "positive"
+
     return "neutral"
 
 
@@ -614,10 +659,13 @@ def estimate_emotion_label(text, sent_label):
     if sent_label in ["negative", "context_negative"]:
         if any(w in text_lower for w in ["anger", "attack", "blame", "war", "threat"]):
             return "anger"
+
         if any(w in text_lower for w in ["fear", "risk", "crisis", "danger", "uncertain", "unclear"]):
             return "fear"
+
         if any(w in text_lower for w in ["loss", "death", "damage", "decline"]):
             return "sadness"
+
         return "negative"
 
     return "neutral"
@@ -676,7 +724,11 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
         bias_label = "explicit_negative"
     elif implicit_hits:
         bias_label = "implicit_negative"
-    elif uncertainty_hits and (sent_label == "negative" or context_adjusted_label == "context_negative" or sentence_has_negative_signal):
+    elif uncertainty_hits and (
+        sent_label == "negative"
+        or context_adjusted_label == "context_negative"
+        or sentence_has_negative_signal
+    ):
         bias_label = "uncertainty_context"
     elif context_adjusted_label == "context_negative":
         bias_label = "contextual_negative"
@@ -684,11 +736,20 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
     if sarcasm_flag:
         bias_label = "sarcasm" if bias_label == "none" else f"{bias_label}+sarcasm"
 
-    effective_for_emotion = context_adjusted_label if context_adjusted_label != "context_negative" else "negative"
+    effective_for_emotion = (
+        context_adjusted_label
+        if context_adjusted_label != "context_negative"
+        else "negative"
+    )
+
     emotion_label = estimate_emotion_label(text, effective_for_emotion)
 
     emotion_intensity = round(
-        min(100, max(abs(wvd["compound"]), abs(wtb.polarity)) * 70 + max(tb.subjectivity, wtb.subjectivity) * 30),
+        min(
+            100,
+            max(abs(wvd["compound"]), abs(wtb.polarity)) * 70
+            + max(tb.subjectivity, wtb.subjectivity) * 30
+        ),
         1
     )
 
@@ -701,13 +762,19 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
     confidence += len(uncertainty_hits) * 3
     confidence += 7 if sarcasm_flag else 0
 
-    if sent_label == "neutral" and not explicit_hits and len(implicit_hits) <= 1 and abs(vd["compound"]) < 0.2:
+    if (
+        sent_label == "neutral"
+        and not explicit_hits
+        and len(implicit_hits) <= 1
+        and abs(vd["compound"]) < 0.2
+    ):
         confidence -= 8
 
     confidence = round(max(45, min(98, confidence)), 1)
 
     if len(text.split()) <= 3:
         bias_label = "none"
+
         if sent_label == "neutral":
             context_adjusted_label = "neutral"
 
@@ -768,7 +835,8 @@ def summarize_article(df: pd.DataFrame, source_name: str, source_type: str, titl
         summary_lines.append(f"Main subject focus: {', '.join(top_subjects[:3])}.")
 
     summary_lines.append(
-        f"The article appears {overall}, with {count_bias_flagged} bias/context-flagged sentences, {count_context_negative} context-adjusted negative sentences, and average emotion intensity of {avg_emotion}%."
+        f"The article appears {overall}, with {count_bias_flagged} bias/context-flagged sentences, "
+        f"{count_context_negative} context-adjusted negative sentences, and average emotion intensity of {avg_emotion}%."
     )
 
     return {
@@ -796,7 +864,10 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     if not article:
         return {
             "ok": False,
-            "error": f"Could not load article. scrape_status={meta.get('scrape_status', '')}. Some websites block scraping. Try pasted text if URL mode fails."
+            "error": (
+                f"Could not load article. scrape_status={meta.get('scrape_status', '')}. "
+                "Some websites block scraping. Try pasted text if URL mode fails."
+            )
         }
 
     sentences = split_sentences_clean(article)
@@ -806,7 +877,10 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     ]
 
     if not sentences:
-        return {"ok": False, "error": "No usable sentences found after cleaning."}
+        return {
+            "ok": False,
+            "error": "No usable sentences found after cleaning."
+        }
 
     rows = []
 
@@ -828,8 +902,10 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     def framing_score(row):
         if row["context_adjusted_label"] in ["negative", "context_negative"]:
             return -1
-        elif row["sentiment_label"] == "positive":
+
+        if row["sentiment_label"] == "positive":
             return 1
+
         return 0
 
     df["framing_score"] = df.apply(framing_score, axis=1)
@@ -869,7 +945,14 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     df["severity_score"] = df.apply(severity_score, axis=1)
 
     top_subjects = extract_subjects(article, 5)
-    summary = summarize_article(df, meta["source_name"], meta["source_type"], meta["title"], top_subjects)
+
+    summary = summarize_article(
+        df,
+        meta["source_name"],
+        meta["source_type"],
+        meta["title"],
+        top_subjects
+    )
 
     flagged = df[df["bias_label"] != "none"].sort_values(
         ["severity_score", "analysis_confidence_%", "emotion_intensity_%"],
@@ -877,9 +960,8 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     )
 
     top_negative_pool = df[
-        (df["sentiment_label"] == "negative")
+        (df["vader_compound"] <= -0.1)
         | (df["context_adjusted_label"] == "context_negative")
-        | (df["vader_compound"] <= -0.2)
     ].copy()
 
     if top_negative_pool.empty:
@@ -890,12 +972,22 @@ def analyze_article(article_text: str = "", article_url: str = ""):
         ascending=[False, True]
     ).head(5)
 
-    emotion_mix = (df["emotion_label"].value_counts(normalize=True) * 100).round(1).to_dict()
+    emotion_mix = (
+        df["emotion_label"]
+        .value_counts(normalize=True)
+        .mul(100)
+        .round(1)
+        .to_dict()
+    )
+
     sentiment_counts = df["sentiment_label"].value_counts().to_dict()
     bias_counts = df["bias_label"].value_counts().to_dict()
     quote_counts = df["quote_type"].value_counts().to_dict()
 
-    speaker_rows = df[(df["speaker"] != "") | (df["quote_type"] == "quote_or_quoted_content")].head(8)
+    speaker_rows = df[
+        (df["speaker"] != "")
+        | (df["quote_type"] == "quote_or_quoted_content")
+    ].head(8)
 
     return {
         "ok": True,
@@ -907,13 +999,37 @@ def analyze_article(article_text: str = "", article_url: str = ""):
         "quote_counts": quote_counts,
         "emotion_mix": emotion_mix,
         "speakers": speaker_rows[
-            ["speaker", "sentence", "sentiment_label", "bias_label", "context_adjusted_label", "emotion_intensity_%", "analysis_confidence_%", "matched_cues"]
+            [
+                "speaker",
+                "sentence",
+                "sentiment_label",
+                "bias_label",
+                "context_adjusted_label",
+                "emotion_intensity_%",
+                "analysis_confidence_%",
+                "matched_cues"
+            ]
         ].to_dict(orient="records"),
         "flagged_sentences": flagged[
-            ["sentence", "bias_label", "context_adjusted_label", "emotion_intensity_%", "analysis_confidence_%", "matched_cues", "severity_score"]
+            [
+                "sentence",
+                "bias_label",
+                "context_adjusted_label",
+                "emotion_intensity_%",
+                "analysis_confidence_%",
+                "matched_cues",
+                "severity_score"
+            ]
         ].head(10).to_dict(orient="records"),
         "top_negative_sentences": top_negative[
-            ["sentence", "vader_compound", "vader_label", "bias_label", "context_adjusted_label", "severity_score"]
+            [
+                "sentence",
+                "vader_compound",
+                "vader_label",
+                "bias_label",
+                "context_adjusted_label",
+                "severity_score"
+            ]
         ].to_dict(orient="records"),
         "results": df.to_dict(orient="records")
     }
