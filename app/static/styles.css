@@ -82,7 +82,7 @@ body {
 
 .card {
   background:
-    linear-gradient(rgba(255,255,255,0.48), rgba(255,255,255,0.18)),
+    linear-gradient(rgba(255, 255, 255, 0.48), rgba(255, 255, 255, 0.18)),
     var(--paper-light);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -150,7 +150,7 @@ button {
   letter-spacing: 1px;
   text-transform: uppercase;
   box-shadow: 0 5px 14px rgba(95, 31, 24, 0.28);
-  cursor: auto;
+  cursor: pointer;
 }
 
 button:hover {
@@ -234,41 +234,6 @@ button:hover {
   font-weight: bold;
 }
 
-/* Cursor halo + tail */
-.cursor-halo {
-  position: fixed;
-  width: 34px;
-  height: 34px;
-  border: 2px solid rgba(139, 47, 36, 0.65);
-  border-radius: 50%;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  z-index: 9999;
-  mix-blend-mode: multiply;
-}
-
-.cursor-dot {
-  position: fixed;
-  width: 7px;
-  height: 7px;
-  background: var(--red);
-  border-radius: 50%;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  z-index: 10000;
-}
-
-.cursor-tail {
-  position: fixed;
-  width: 9px;
-  height: 9px;
-  background: rgba(195, 154, 59, 0.42);
-  border-radius: 50%;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  z-index: 9998;
-}
-
 @media (max-width: 850px) {
   .charts-grid {
     grid-template-columns: 1fr;
@@ -285,11 +250,5 @@ button:hover {
 
   button {
     cursor: pointer;
-  }
-
-  .cursor-halo,
-  .cursor-dot,
-  .cursor-tail {
-    display: none;
   }
 }
