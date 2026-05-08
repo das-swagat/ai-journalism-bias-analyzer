@@ -1,4 +1,4 @@
-<img src="system_architecture.png" width="900"/>
+
 # The Context Observer  
 ### AI-powered journalism analysis
 
