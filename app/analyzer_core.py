@@ -38,6 +38,22 @@ SARCASM_MARKERS = {
     "amazing leadership", "what a great"
 }
 
+UNCERTAINTY_CUES = {
+    "unclear", "uncertain", "not clear", "remains unclear", "questions remain",
+    "doubts", "disputed", "alleged", "allegedly", "claimed", "reportedly",
+    "could not verify", "has not verified", "no evidence", "without evidence"
+}
+
+NEGATIVE_SIGNAL_WORDS = {
+    "attack", "attacks", "attacked", "accused", "violation", "violated",
+    "lawsuit", "error", "errors", "rejected", "rejects", "blow", "setback",
+    "threat", "threatened", "violence", "fired", "explosion", "explosions",
+    "damage", "unconstitutional", "illegal", "undermines", "nullifies",
+    "void", "rig", "silence", "crisis", "war", "conflict", "strike",
+    "strikes", "missile", "missiles", "drone", "drones", "military",
+    "dead", "death", "killed", "injured", "collapse", "failed", "failure"
+}
+
 STOP_SUBJECTS = {
     "United States", "New York", "White House", "Google Colab", "Media Bias",
     "Bias Annotation", "TextBlob", "NBC News"
@@ -196,6 +212,50 @@ def cut_after_junk_sections(text: str):
     return text.strip()
 
 
+def is_caption_like(text: str):
+    text_low = text.lower().strip()
+
+    caption_starts = (
+        "signs are seen",
+        "people are seen",
+        "people walk",
+        "a man walks",
+        "a woman walks",
+        "a person walks",
+        "supporters gather",
+        "protesters gather",
+        "voters wait",
+        "an image shows",
+        "this image shows",
+        "a view of",
+        "a photo shows",
+        "photo shows",
+        "image shows"
+    )
+
+    caption_markers = (
+        "getty images",
+        "ap photo",
+        "afp via getty",
+        "hide caption",
+        "caption",
+        "photo by",
+        "seen during",
+        "pictured during",
+        "credit:",
+        "/ap",
+        "/getty images"
+    )
+
+    if text_low.startswith(caption_starts):
+        return True
+
+    if any(marker in text_low for marker in caption_markers):
+        return True
+
+    return False
+
+
 def clean_article_text(text: str):
     if not text:
         return ""
@@ -205,13 +265,23 @@ def clean_article_text(text: str):
     text = cut_after_junk_sections(text)
 
     lines = []
+    seen_lines = set()
+
     for line in text.splitlines():
         line = re.sub(r"\s+", " ", line).strip()
 
         if not line:
             continue
 
+        if line in seen_lines:
+            continue
+
+        seen_lines.add(line)
+
         if is_junk_paragraph(line):
+            continue
+
+        if is_caption_like(line):
             continue
 
         # remove photo/caption boilerplate and isolated section labels
@@ -244,7 +314,7 @@ def get_article_text_and_meta(article_text: str, article_url: str):
     if isinstance(article_text, str) and article_text.strip():
         cleaned = clean_article_text(article_text.strip())
         lines = [l.strip() for l in cleaned.splitlines() if l.strip()]
-    
+
         skip_title_lines = {
             "special series",
             "world",
@@ -256,23 +326,23 @@ def get_article_text_and_meta(article_text: str, article_url: str):
             "podcasts",
             "by"
         }
-    
+
         for line in lines[:12]:
             low = line.lower().strip()
-    
+
             if low in skip_title_lines:
                 continue
-    
+
             if low.startswith("by "):
                 continue
-    
+
             if re.search(r"\b\d{4}\b|\d{1,2}:\d{2}", line):
                 continue
-    
+
             if len(line.split()) >= 6:
                 meta["title"] = line[:180]
                 break
-    
+
         return cleaned, meta
 
     if isinstance(article_url, str) and article_url.strip():
@@ -312,14 +382,26 @@ def get_article_text_and_meta(article_text: str, article_url: str):
                 paragraphs = [p.get_text(" ", strip=True) for p in soup.find_all("p")]
 
             cleaned_paragraphs = []
+            seen_paragraphs = set()
 
             for p in paragraphs:
                 p = re.sub(r"\s+", " ", p).strip()
+
+                if not p:
+                    continue
+
+                if p in seen_paragraphs:
+                    continue
+
+                seen_paragraphs.add(p)
 
                 if len(p) < 60:
                     continue
 
                 if is_junk_paragraph(p):
+                    continue
+
+                if is_caption_like(p):
                     continue
 
                 if p.lower().startswith(("file -", "ap hide caption", "hide caption")):
@@ -393,13 +475,23 @@ def split_sentences_clean(text: str):
         i += 1
 
     final = []
+    seen_sentences = set()
+
     for s in merged:
         s = s.strip()
 
         if not s:
             continue
 
+        if s in seen_sentences:
+            continue
+
+        seen_sentences.add(s)
+
         if is_junk_paragraph(s):
+            continue
+
+        if is_caption_like(s):
             continue
 
         if s.lower().startswith(("file -", "ap hide caption", "hide caption")):
@@ -466,7 +558,8 @@ def extract_subjects(full_text: str, topn: int = 5):
         "Russia", "Ukraine", "Kremlin", "Putin", "Remeslo", "Navalny", "Telegram",
         "Fontanka", "Tass", "Solovyov", "Rubio", "Trump", "Iran", "Israel",
         "Hezbollah", "Microsoft", "Meta", "Anthropic", "OpenAI", "Amazon", "CNBC",
-        "Reuters", "CNN", "NPR", "EU", "Hungary", "Slovakia", "Belgium"
+        "Reuters", "CNN", "NPR", "EU", "Hungary", "Slovakia", "Belgium",
+        "Virginia", "Democrats", "Republicans", "Florida"
     }
 
     counts = {}
@@ -504,6 +597,14 @@ def sentiment_label(tb_polarity: float, vd_compound: float):
     return "neutral"
 
 
+def vader_label(vd_compound: float):
+    if vd_compound <= -0.1:
+        return "negative"
+    if vd_compound >= 0.1:
+        return "positive"
+    return "neutral"
+
+
 def estimate_emotion_label(text, sent_label):
     text_lower = text.lower()
 
@@ -513,7 +614,7 @@ def estimate_emotion_label(text, sent_label):
     if sent_label in ["negative", "context_negative"]:
         if any(w in text_lower for w in ["anger", "attack", "blame", "war", "threat"]):
             return "anger"
-        if any(w in text_lower for w in ["fear", "risk", "crisis", "danger", "uncertain"]):
+        if any(w in text_lower for w in ["fear", "risk", "crisis", "danger", "uncertain", "unclear"]):
             return "fear"
         if any(w in text_lower for w in ["loss", "death", "damage", "decline"]):
             return "sadness"
@@ -536,16 +637,37 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
     explicit_hits = [p for p in EXPLICIT_NEGATIVE_CUES if p in text_lower]
     positive_hits = [p for p in POSITIVE_CUES if p in text_lower]
     sarcasm_hits = [p for p in SARCASM_MARKERS if p in text_lower]
+    uncertainty_hits = [p for p in UNCERTAINTY_CUES if p in text_lower]
 
-    sarcasm_flag = bool(sarcasm_hits or (tb.polarity > 0.2 and vd["compound"] < -0.3))
+    # Only call something sarcasm when an actual sarcasm marker is present.
+    # Simple model disagreement is not enough for a defensible sarcasm label.
+    sarcasm_flag = bool(sarcasm_hits)
 
     sent_label = sentiment_label(tb.polarity, vd["compound"])
 
     if explicit_hits or implicit_hits:
         sent_label = "negative"
 
+    sentence_has_negative_signal = (
+        vd["compound"] <= -0.2
+        or tb.polarity <= -0.15
+        or bool(implicit_hits)
+        or bool(explicit_hits)
+        or any(word in text_lower for word in NEGATIVE_SIGNAL_WORDS)
+    )
+
+    context_has_strong_negative_signal = (
+        wvd["compound"] <= -0.35
+        or wtb.polarity <= -0.2
+    )
+
     context_adjusted_label = sent_label
-    if sent_label == "neutral" and (wvd["compound"] <= -0.15 or wtb.polarity <= -0.1 or implicit_hits or explicit_hits):
+
+    if (
+        sent_label == "neutral"
+        and sentence_has_negative_signal
+        and context_has_strong_negative_signal
+    ):
         context_adjusted_label = "context_negative"
 
     bias_label = "none"
@@ -554,6 +676,8 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
         bias_label = "explicit_negative"
     elif implicit_hits:
         bias_label = "implicit_negative"
+    elif uncertainty_hits and (sent_label == "negative" or context_adjusted_label == "context_negative" or sentence_has_negative_signal):
+        bias_label = "uncertainty_context"
     elif context_adjusted_label == "context_negative":
         bias_label = "contextual_negative"
 
@@ -574,6 +698,7 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
     confidence += abs(tb.polarity) * 10
     confidence += len(implicit_hits) * 5
     confidence += len(explicit_hits) * 8
+    confidence += len(uncertainty_hits) * 3
     confidence += 7 if sarcasm_flag else 0
 
     if sent_label == "neutral" and not explicit_hits and len(implicit_hits) <= 1 and abs(vd["compound"]) < 0.2:
@@ -590,6 +715,7 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
     matched += [f"implicit:{x}" for x in implicit_hits]
     matched += [f"explicit:{x}" for x in explicit_hits]
     matched += [f"positive:{x}" for x in positive_hits]
+    matched += [f"uncertainty:{x}" for x in uncertainty_hits]
     matched += [f"sarcasm:{x}" for x in sarcasm_hits]
 
     return {
@@ -600,6 +726,7 @@ def analyze_sentence(text: str, prev_text: str = "", next_text: str = ""):
         "textblob_polarity": round(tb.polarity, 3),
         "textblob_subjectivity": round(tb.subjectivity, 3),
         "vader_compound": round(vd["compound"], 3),
+        "vader_label": vader_label(vd["compound"]),
         "sentiment_label": sent_label,
         "context_adjusted_label": context_adjusted_label,
         "bias_label": bias_label,
@@ -641,7 +768,7 @@ def summarize_article(df: pd.DataFrame, source_name: str, source_type: str, titl
         summary_lines.append(f"Main subject focus: {', '.join(top_subjects[:3])}.")
 
     summary_lines.append(
-        f"The article appears {overall}, with {count_bias_flagged} bias-flagged sentences, {count_context_negative} context-adjusted negative sentences, and average emotion intensity of {avg_emotion}%."
+        f"The article appears {overall}, with {count_bias_flagged} bias/context-flagged sentences, {count_context_negative} context-adjusted negative sentences, and average emotion intensity of {avg_emotion}%."
     )
 
     return {
@@ -673,7 +800,10 @@ def analyze_article(article_text: str = "", article_url: str = ""):
         }
 
     sentences = split_sentences_clean(article)
-    sentences = [s for s in sentences if not is_junk_paragraph(s)]
+    sentences = [
+        s for s in sentences
+        if not is_junk_paragraph(s) and not is_caption_like(s)
+    ]
 
     if not sentences:
         return {"ok": False, "error": "No usable sentences found after cleaning."}
@@ -708,14 +838,18 @@ def analyze_article(article_text: str = "", article_url: str = ""):
     def severity_score(row):
         score = 0
 
-        if row["bias_label"] == "explicit_negative":
-            score += 4
-        elif row["bias_label"] == "implicit_negative":
-            score += 3
-        elif row["bias_label"] == "contextual_negative":
-            score += 2
+        bias_label_value = str(row["bias_label"])
 
-        if "sarcasm" in str(row["bias_label"]):
+        if bias_label_value == "explicit_negative":
+            score += 4
+        elif bias_label_value == "implicit_negative":
+            score += 3
+        elif bias_label_value == "contextual_negative":
+            score += 2
+        elif bias_label_value == "uncertainty_context":
+            score += 1.5
+
+        if "sarcasm" in bias_label_value:
             if row["sentiment_label"] == "negative" or row["context_adjusted_label"] == "context_negative":
                 score += 3
             else:
@@ -742,7 +876,16 @@ def analyze_article(article_text: str = "", article_url: str = ""):
         ascending=False
     )
 
-    top_negative = df.sort_values(
+    top_negative_pool = df[
+        (df["sentiment_label"] == "negative")
+        | (df["context_adjusted_label"] == "context_negative")
+        | (df["vader_compound"] <= -0.2)
+    ].copy()
+
+    if top_negative_pool.empty:
+        top_negative_pool = df.copy()
+
+    top_negative = top_negative_pool.sort_values(
         ["severity_score", "vader_compound"],
         ascending=[False, True]
     ).head(5)
@@ -770,7 +913,7 @@ def analyze_article(article_text: str = "", article_url: str = ""):
             ["sentence", "bias_label", "context_adjusted_label", "emotion_intensity_%", "analysis_confidence_%", "matched_cues", "severity_score"]
         ].head(10).to_dict(orient="records"),
         "top_negative_sentences": top_negative[
-            ["sentence", "vader_compound", "bias_label", "context_adjusted_label", "severity_score"]
+            ["sentence", "vader_compound", "vader_label", "bias_label", "context_adjusted_label", "severity_score"]
         ].to_dict(orient="records"),
         "results": df.to_dict(orient="records")
     }
