@@ -1,4 +1,3 @@
-
 # The Context Observer  
 ### AI-powered journalism analysis
 
@@ -32,7 +31,7 @@ The easiest way to use the tool is through the hosted web version.
    - emotion mix
    - likely speakers
    - top bias-flagged sentences
-   - top negative sentences
+   - top negative / high-severity sentences
 
 **Note:** Some news websites may block URL scraping. If URL mode fails, copy and paste the article text instead.
 
@@ -50,7 +49,21 @@ The analyzer uses:
 - lightweight speaker and subject extraction
 - visual summaries using charts
 
+**VADER** stands for **Valence Aware Dictionary and sEntiment Reasoner**. It is a rule-based sentiment scoring method that gives a compound score from `-1` to `+1`, where negative values suggest negative tone, positive values suggest positive tone, and values near `0` suggest neutral tone.
+
 The goal is not to claim perfect bias detection, but to provide an explainable prototype for studying how sentiment, framing, context, and bias cues appear in journalism.
+
+## How to Interpret the Output
+
+The report combines several types of signals:
+
+- **Sentiment labels** describe the general emotional direction of a sentence.
+- **VADER score** is a compound sentiment score from `-1` to `+1`.
+- **Bias/context labels** are rule-based indicators of framing, attribution, uncertainty, or emotionally loaded wording.
+- **Severity score** combines sentiment strength, cue strength, and context-based signals.
+- **Confidence score** is an estimated internal score, not a formally validated accuracy measure.
+
+These outputs should be read as analysis cues, not as final judgments about whether an article is biased.
 
 ## Using or Extending the Project
 
@@ -82,6 +95,7 @@ Known limitations:
 4. Speaker detection is heuristic and may not always identify the correct speaker.
 5. Confidence values are estimated scores, not formally validated accuracy values.
 6. Bias/context labels should be interpreted as analysis cues, not final judgments.
+7. Some sentences may be flagged because of context or severity cues even when the VADER score alone is neutral or positive.
 
 ## Intended Use
 
