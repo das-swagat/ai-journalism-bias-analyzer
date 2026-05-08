@@ -1,3 +1,4 @@
+<img src="system_architecture.png" width="900"/>
 # The Context Observer  
 ### AI-powered journalism analysis
 
@@ -12,7 +13,7 @@ https://ai-journalism-bias-analyzer.onrender.com
 ## System Overview
 
 <p align="center">
-  <img src="assets/system_architecture.png" width="900"/>
+  <img src="system_architecture.png" width="900"/>
 </p>
 
 ## Use the Web App
@@ -104,8 +105,6 @@ The-Context-Observer_AI-powered-journalism-analysis/
 │   └── static/
 │       ├── styles.css
 │       └── app.js
-├── assets/
-│   └── system_architecture.png
 ├── data/
 │   └── labeled_dataset.xlsx
 ├── notebooks/
@@ -115,4 +114,27 @@ The-Context-Observer_AI-powered-journalism-analysis/
 ├── requirements.txt
 ├── runtime.txt
 ├── render.yaml
+├── system_architecture.png
 └── README.md
+```
+
+## Deployment
+
+The live web app is deployed using Render.
+
+- Backend: Flask / Python
+- Frontend: HTML, CSS, JavaScript
+- Charts: Chart.js
+- Dataset support: optional MBIC-informed cue expansion
+- Hosting: Render
+- Repository: GitHub
+
+The Render start command is:
+
+```bash
+gunicorn --chdir app app:app
+```
+
+## License
+
+This repository is provided for research, educational, and demonstration purposes.
