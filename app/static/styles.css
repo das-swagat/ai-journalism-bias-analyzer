@@ -172,6 +172,28 @@ button:hover {
   border-left: 7px solid var(--red);
 }
 
+.guide-box {
+  background: rgba(255, 250, 240, 0.78);
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--blue);
+  border-radius: 8px;
+  padding: 14px;
+  margin: 16px 0;
+}
+
+.guide-box h3 {
+  margin: 0 0 8px;
+  color: var(--blue);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-size: 16px;
+}
+
+.guide-box p {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
